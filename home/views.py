@@ -5,14 +5,84 @@ from django.contrib.auth.models import User
 from django.contrib.auth import logout
 from django.http import HttpResponseRedirect
 from django.db import transaction
-from home.models import Profile
-from home.forms import UserForm,ProfileForm
+from home.models import ClientBank
+from home.forms import ClientForm
 from django.views import View
 
 
 class Home(View):
     def get(self, request):
-        return render(request, 'home/home.html')
+        context = {}
+        email = request.user.email
+        user = User.objects.filter(email=email).first()
+
+        if not user or not user.is_staff:
+            logout(request)
+            return HttpResponseRedirect('/')
+
+        context['clients'] = ClientBank.objects.filter(creator=user)
+        return render(request, 'home/home.html', context)
+
+class AddClient(View):
+    def get(self, request):
+        context = {}
+        form = ClientForm()
+
+        context['form'] = form
+
+        return render(request, 'home/client.html', context)
+
+    def post(self, request):
+        context = {}
+        form = ClientForm(request.POST)
+
+        if form.is_valid():
+            form.save(creator=request.user)
+            return HttpResponseRedirect('/')
+
+        context['form'] = form
+
+        return render(request, 'home/client.html', context)
+
+class UpdateClient(View):
+    def get(self, request, *args, **kwargs):
+        context = {}
+        client = ClientBank.objects.filter(id=kwargs.get('user_id'), creator=request.user).first()
+        if not client:
+            return HttpResponseRedirect('/')
+
+        form = ClientForm(instance=client)
+        context['form'] = form
+
+        return render(request, 'home/client.html', context)
+
+    def post(self, request, *args, **kwargs):
+        context = {}
+
+        client = ClientBank.objects.filter(id=kwargs.get('user_id'), creator=request.user).first()
+        if not client:
+            return HttpResponseRedirect('/')
+
+        form = ClientForm(request.POST, instance=client)
+
+        if form.is_valid():
+            form.save()
+            return HttpResponseRedirect('/')
+
+        context['form'] = form
+
+        return render(request, 'home/client.html', context)
+
+
+class RemoveClient(View):
+    def get(self, request, *args, **kwargs):
+        client = ClientBank.objects.filter(id=kwargs.get('user_id'), creator=request.user).first()
+        if not client:
+            return HttpResponseRedirect('/')
+
+        client.delete()
+        return HttpResponseRedirect('/')
+
 
 class Logout(View):
     def get(self, request):
@@ -22,25 +92,4 @@ class Logout(View):
     def post(self, request):
         logout(request)
         return HttpResponseRedirect('/')
-"""
-@login_required
-@transaction.atomic
-def update_profile(request):
-    if request.method == 'POST':
-        user_form = UserForm(request.POST, instance=request.user)
-        profile_form = ProfileForm(request.POST, instance=request.user.profile)
-        if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            profile_form.save()
-            return HttpResponseRedirect('/')
-        else:
-            raise Exception(request, 'Please correct the error below.')
-    else:
-        user_form = UserForm(instance=request.user)
-        profile_form = ProfileForm(instance=request.user.profile)
-    return render(request, 'home/profile.html', {
-        'user_form': user_form,
-        'profile_form': profile_form
-    })
-"""
 

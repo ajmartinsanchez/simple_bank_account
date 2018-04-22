@@ -21,3 +21,10 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
+
+
+class ClientBank(models.Model):
+    creator = models.ForeignKey(User, related_name="clients")
+    firstname = models.CharField(max_length=50, blank=True)
+    lastname = models.CharField(max_length=50, blank=True)
+    iban = models.CharField(max_length=34, blank=True)
